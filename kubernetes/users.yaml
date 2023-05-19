@@ -1,0 +1,99 @@
+#kind: StorageClass
+#apiVersion: storage.k8s.io/v1
+#metadata:
+#  name: efs-sc
+#provisioner: efs.csi.aws.com
+#---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-pv
+spec:
+  capacity: 
+  # with EFS this really does not matter
+    storage: 5Gi
+  volumeMode: Filesystem
+  # EFS is a filesystem service
+  accessModes:
+    - ReadWriteMany
+    #multiple nodes can access this volume
+  #storageClassName: efs-sc
+  #this is no longer required, previously we used standard or hostname with docker desktop k8s
+  # right now kubectl get sc is empty
+  storageClassName: ""
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-09d6d1ad84f93362c
+    # this is my file system id found in EFS console
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  #storageClassName: efs-sc
+  storageClassName: ""
+  #storageClassName no longer required.
+  resources:
+    requests:
+      storage: 5Gi
+# note we need to add volumes at the bottom of this yaml and volumeMounts, see below. 
+#Make sure to add /users folder to this project
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-service
+spec:
+  selector:
+    app: users
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      #port: 8080
+      #temporarily try on 8080
+      port: 80
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-deployment
+spec:
+  #replicas: 1
+  replicas: 3
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      containers:
+        - name: users-api
+          #image: academind/kub-dep-users:latest
+          image: dave123456789/k8s-deploy-users:latest
+          env:
+            - name: MONGODB_CONNECTION_URI
+              #value: 'mongodb+srv://maximilian:wk4nFupsbntPbB3l@cluster0.ntrwp.mongodb.net/users?retryWrites=true&w=majority'
+              # my atlas cluster url (MONGODB_URL=cluster0.pj1lxuo.mongodb.net) and MONGO_USERNAME=dave and MONGODB_PASSWORD=8JJDseGJYGqTbtsc
+              value: 'mongodb+srv://dave:8JJDseGJYGqTbtsc@cluster0.pj1lxuo.mongodb.net/users?retryWrites=true&w=majority'
+              #NOTE: database name on atlas cluster will be /users as specified in the url above.
+            - name: AUTH_API_ADDRESSS
+              value: 'auth-service.default:3000'
+              # this uses the domain names of the k8s space. This is automatically generated based on 
+              # auth.yaml service name (auth-service) and the default namespace
+          volumeMounts:
+            -name: efs-vol
+             mountPath: /app/users
+             # mounts this volume to specific path in container /WORDIR/users
+      volumes:
+      # this lists all volumes in this yaml.
+        -name: efs-vol
+         persistentVolumeClaim:
+         # this is the type
+           claimName: efs-pvc 
+           # see above       
