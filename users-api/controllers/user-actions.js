@@ -100,6 +100,8 @@ const createUser = async (req, res, next) => {
 
   const logEntry = `${new Date().toISOString()} - ${savedUser.id} - ${email}\n`;
 
+  //when new user created save a log entry of user, date and email of the new user
+  //this is saved to /app/users/users-log.txt in the users container/pod
   fs.appendFile(
     path.join('/app', 'users', 'users-log.txt'),
     logEntry,
@@ -151,6 +153,7 @@ const verifyUser = async (req, res, next) => {
   }
 };
 
+// that file above is the file that gets read when hitting the /logs url (see user-routes.js)
 const getLogs = (req, res, next) => {
   fs.readFile(path.join('/app', 'users', 'users-log.txt'), (err, data) => {
     if (err) {
