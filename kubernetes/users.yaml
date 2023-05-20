@@ -87,13 +87,13 @@ spec:
               # this uses the domain names of the k8s space. This is automatically generated based on 
               # auth.yaml service name (auth-service) and the default namespace
           volumeMounts:
-            -name: efs-vol
-             mountPath: /app/users
+            - name: efs-vol
+              mountPath: /app/users
              # mounts this volume to specific path in container /WORDIR/users
       volumes:
       # this lists all volumes in this yaml.
-        -name: efs-vol
-         persistentVolumeClaim:
+        - name: efs-vol
+          persistentVolumeClaim: 
          # this is the type
-           claimName: efs-pvc 
+            claimName: efs-pvc
            # see above       
